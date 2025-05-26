@@ -204,6 +204,108 @@
       saveData();
     }
 
+  // --- New Statistics Tables ---
+
+  // Utility: get current month
+  function getCurrentMonth() {
+    const now = new Date();
+    return now.toISOString().slice(0, 7); // "YYYY-MM"
+  }
+
+  // Utility: get week number of year
+  function getWeekNumber(d) {
+    d = new Date(d);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  }
+
+  // 1. Top 5 Monthly Projects
+  function renderTopMonthlyProjects() {
+    const month = getCurrentMonth();
+    const totals = {};
+    for (const [name, records] of Object.entries(projectData)) {
+      for (const [date, minutes] of Object.entries(records)) {
+        if (date.startsWith(month)) {
+          totals[name] = (totals[name] || 0) + minutes;
+        }
+      }
+    }
+
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    let html = `<h2>Top 5 Projects - ${month}</h2><table><thead><tr><th>Project</th><th>Minutes</th></tr></thead><tbody>`;
+    for (const [name, min] of sorted) {
+      html += `<tr><td>${name}</td><td>${Math.round(min)}</td></tr>`;
+    }
+    html += '</tbody></table>';
+
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.innerHTML = html;
+    document.body.appendChild(box);
+  }
+
+  // 2. Weekday-wise Average (Mon–Fri)
+  function renderWeekdayAverages() {
+    const weekdayTotals = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0 };
+    const counts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0 };
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (const records of Object.values(projectData)) {
+      for (const [date, minutes] of Object.entries(records)) {
+        const d = new Date(date);
+        const weekday = days[d.getDay()];
+        if (weekday in weekdayTotals) {
+          weekdayTotals[weekday] += minutes;
+          counts[weekday]++;
+        }
+      }
+    }
+
+    let html = `<h2>Weekday Averages</h2><table><thead><tr><th>Weekday</th><th>Avg. Minutes</th></tr></thead><tbody>`;
+    for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']) {
+      const avg = counts[day] ? (weekdayTotals[day] / counts[day]) : 0;
+      html += `<tr><td>${day}</td><td>${Math.round(avg)}</td></tr>`;
+    }
+    html += '</tbody></table>';
+
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.innerHTML = html;
+    document.body.appendChild(box);
+  }
+
+  // 3. Weekly Stats
+  function renderWeeklyStats() {
+    const weekData = {};
+    for (const [_, records] of Object.entries(projectData)) {
+      for (const [date, minutes] of Object.entries(records)) {
+        const week = getWeekNumber(date);
+        weekData[week] = (weekData[week] || 0) + minutes;
+      }
+    }
+
+    const sortedWeeks = Object.keys(weekData).sort((a, b) => a - b).slice(-4); // last 4 weeks
+    let html = `<h2>Weekly Stats</h2><table><thead><tr><th>Week #</th><th>Total Minutes</th></tr></thead><tbody>`;
+    for (const week of sortedWeeks) {
+      html += `<tr><td>Week ${week}</td><td>${Math.round(weekData[week])}</td></tr>`;
+    }
+    html += '</tbody></table>';
+
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.innerHTML = html;
+    document.body.appendChild(box);
+  }
+
+    // Render all stats
+    renderTopMonthlyProjects();
+    renderWeekdayAverages();
+    renderWeeklyStats();
+      
+
     // Timer
     document.getElementById("timerStart").onclick = () => {
       if (!timerInt) timerInt = setInterval(() => tick('timer'), 1000);
