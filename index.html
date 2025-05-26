@@ -511,6 +511,76 @@ function renderArchive() {
 // On page load
 renderTasks();
 renderArchive();
+
+
+
+    let notes = JSON.parse(localStorage.getItem("notes") || "[]");
+
+function saveNotes() {
+  localStorage.setItem("notes", JSON.stringify(notes));
+}
+
+function addNote() {
+  const content = document.getElementById("noteInput").value.trim();
+  const project = document.getElementById("noteProject").value || null;
+  if (!content) return alert("Please write some note before adding.");
+  notes.push({ content, project, date: new Date().toISOString() });
+  document.getElementById("noteInput").value = "";
+  renderNotes();
+  saveNotes();
+}
+
+function renderNoteProjectDropdown() {
+  const select = document.getElementById("noteProject");
+  select.innerHTML = '<option value="">-- Select Project --</option>';
+  Object.keys(projectData).forEach(proj => {
+    const opt = document.createElement("option");
+    opt.value = proj;
+    opt.text = proj;
+    select.appendChild(opt);
+  });
+}
+
+function renderNotes() {
+  const container = document.getElementById("notesList");
+  container.innerHTML = "";
+
+  if(notes.length === 0) {
+    container.innerHTML = "<p>No notes added yet.</p>";
+    return;
+  }
+
+  notes.forEach((note, i) => {
+    const div = document.createElement("div");
+    div.style.border = "1px solid #ccc";
+    div.style.borderRadius = "5px";
+    div.style.padding = "10px";
+    div.style.marginTop = "10px";
+    div.style.backgroundColor = "#fafafa";
+
+    const dateStr = new Date(note.date).toLocaleString();
+
+    div.innerHTML = `
+      <small style="color:#666;">${dateStr}</small><br/>
+      <strong>Project:</strong> ${note.project || "None"}<br/>
+      <pre style="white-space: pre-wrap; margin-top:5px;">${note.content}</pre>
+      <button onclick="deleteNote(${i})" style="margin-top:5px;">Delete</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function deleteNote(index) {
+  if (!confirm("Delete this note?")) return;
+  notes.splice(index, 1);
+  renderNotes();
+  saveNotes();
+}
+
+// Call this on page load
+renderNoteProjectDropdown();
+renderNotes();
+
     // Stopwatch
     document.getElementById("stopwatchStart").onclick = () => {
       if (!stopwatchInt) stopwatchInt = setInterval(() => tick('stopwatch'), 1000);
@@ -530,5 +600,16 @@ renderArchive();
   <div id="archiveList"></div>
 </div>
 
+<div class="box" style="margin-top: 30px;">
+  <h2>🗒️ Notes</h2>
+  <textarea id="noteInput" rows="4" style="width: 100%;" placeholder="Write your notes here..."></textarea><br/>
+  <label for="noteProject">Assign to project:</label>
+  <select id="noteProject"></select><br/><br/>
+  <button onclick="addNote()">Add Note</button>
+
+  <div id="notesList" style="margin-top: 20px;"></div>
+</div>
+
+  
 </body>
 </html>
