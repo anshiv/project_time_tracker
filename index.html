@@ -305,7 +305,47 @@
     renderWeekdayAverages();
     renderWeeklyStats();
       
+    function getTargetForDate(dateStr) {
+  const day = new Date(dateStr).getDay(); // 0=Sun, 1=Mon...
+  if (day >= 1 && day <= 4) return 240;
+  if (day === 5) return 180;
+  return 0; // Sat, Sun
+}
 
+function renderAllTimeAverage() {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dailyTotals = {};
+
+  // Aggregate minutes per date
+  for (const records of Object.values(projectData)) {
+    for (const [date, minutes] of Object.entries(records)) {
+      dailyTotals[date] = (dailyTotals[date] || 0) + minutes;
+    }
+  }
+
+  const datesSorted = Object.keys(dailyTotals).sort();
+
+  let html = `<h2>📅 All-Time Daily Progress</h2><table><thead>
+    <tr><th>Date</th><th>Day</th><th>Minutes</th><th>Target</th><th>%</th></tr>
+    </thead><tbody>`;
+
+  for (const date of datesSorted) {
+    const minutes = Math.round(dailyTotals[date]);
+    const day = dayNames[new Date(date).getDay()];
+    const target = getTargetForDate(date);
+    const percent = target ? Math.round((minutes / target) * 100) : 0;
+    html += `<tr><td>${date}</td><td>${day}</td><td>${minutes}</td><td>${target}</td><td>${percent}%</td></tr>`;
+  }
+
+  html += '</tbody></table>';
+
+  const box = document.createElement('div');
+  box.className = 'box';
+  box.innerHTML = html;
+  document.body.appendChild(box);
+}
+
+renderAllTimeAverage();
     // Timer
     document.getElementById("timerStart").onclick = () => {
       if (!timerInt) timerInt = setInterval(() => tick('timer'), 1000);
