@@ -1,11 +1,324 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Project Time Tracker</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Project Time Tracker</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #fafafa;
+    margin: 20px;
+    color: #222;
+  }
+  h1, h2 {
+    margin-bottom: 10px;
+  }
+  .flex-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .box {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 0 8px #ccc;
+    flex: 1;
+  }
+  button {
+    margin: 5px 0;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  input[type=text] {
+    padding: 6px 10px;
+    font-size: 14px;
+    width: 200px;
+    margin-right: 8px;
+  }
+  select {
+    font-size: 14px;
+    padding: 6px 10px;
+    margin-left: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th {
+    background: #eee;
+  }
+  .small {
+    font-size: 12px;
+    color: #555;
+  }
+</style>
 </head>
 <body>
-  <div id="root"></div>
-</body>
-</html>
+
+<h1>Project Time Tracker</h1>
+
+<div>
+  <label>Efficiency: 
+    <select id="efficiencySelect">
+      <option value="full">Full Efficiency</option>
+      <option value="half">Half Efficiency</option>
+    </select>
+  </label>
+</div>
+
+<div class="flex-row">
+  <div class="box" style="max-width: 300px;">
+    <h2>Timer</h2>
+    <div id="timerDisplay">00:00:00</div>
+    <button id="timerStart">Start</button>
+    <button id="timerPause">Pause</button>
+    <button id="timerReset">Reset</button>
+  </div>
+
+  <div class="box" style="max-width: 300px;">
+    <h2>Stopwatch</h2>
+    <div id="stopwatchDisplay">00:00:00</div>
+    <button id="stopwatchStart">Start</button>
+    <button id="stopwatchPause">Pause</button>
+    <button id="stopwatchReset">Reset</button>
+  </div>
+</div>
+
+<div class="box" style="max-width: 350px;">
+  <h2>Projects</h2>
+  <input type="text" id="projectNameInput" placeholder="New project name" />
+  <button id="addProjectBtn">Add Project</button>
+
+  <div id="projectList" style="margin-top: 10px;"></div>
+</div>
+
+<div class="box">
+  <h2>Daily Summary (<span id="todayDate"></span>)</h2>
+  <div>Total Time Invested: <span id="dailyTotalTime">0</span> mins</div>
+  <div>Target Today: <span id="dailyTarget">240</span> mins</div>
+
+  <table id="dailyProjectTimesTable">
+    <thead>
+      <tr><th>Project</th><th>Minutes</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="box" style="margin-top: 20px;">
+  <h2>Top 5 Projects This Month</h2>
+  <table id="topProjectsTable">
+    <thead>
+      <tr><th>Project</th><th>Total Minutes</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="box" style="margin-top: 20px;">
+  <h2>Daywise Averages (Mon-Fri)</h2>
+  <table id="daywiseAveragesTable">
+    <thead>
+      <tr><th>Day</th><th>Average Minutes</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+(() => {
+  const MS_IN_DAY = 86400000;
+
+  // Utility
+  function formatTime(seconds) {
+    const hrs = Math.floor(seconds/3600).toString().padStart(2,'0');
+    const mins = Math.floor((seconds%3600)/60).toString().padStart(2,'0');
+    const secs = Math.floor(seconds%60).toString().padStart(2,'0');
+    return `${hrs}:${mins}:${secs}`;
+  }
+  function getTodayDate() {
+    return new Date().toISOString().slice(0,10);
+  }
+  function dayOfWeek(dateStr) {
+    return new Date(dateStr).getDay(); // 0=Sun ... 6=Sat
+  }
+
+  // Data keys
+  const STORAGE_KEY = 'timeTrackerData';
+
+  // Load or initialize data
+  let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+  if (!data.projects) data.projects = [];
+  if (!data.dailyRecords) data.dailyRecords = {};
+  if (!data.efficiency) data.efficiency = 'full';
+  if (!data.timerSeconds) data.timerSeconds = 0;
+  if (!data.stopwatchSeconds) data.stopwatchSeconds = 0;
+  if (!data.selectedProject) data.selectedProject = null;
+
+  // Reset daily timer if day changed
+  const today = getTodayDate();
+  if (data.lastSavedDate !== today) {
+    data.timerSeconds = 0;
+    data.stopwatchSeconds = 0;
+    if (!data.dailyRecords[today]) data.dailyRecords[today] = { totalMinutes: 0, projectTimes: {} };
+    data.lastSavedDate = today;
+  }
+
+  // Save data helper
+  function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  // UI elements
+  const todayDateEl = document.getElementById('todayDate');
+  const dailyTotalTimeEl = document.getElementById('dailyTotalTime');
+  const dailyTargetEl = document.getElementById('dailyTarget');
+  const dailyProjectTimesBody = document.querySelector('#dailyProjectTimesTable tbody');
+  const topProjectsBody = document.querySelector('#topProjectsTable tbody');
+  const daywiseAveragesBody = document.querySelector('#daywiseAveragesTable tbody');
+  const projectListEl = document.getElementById('projectList');
+  const efficiencySelect = document.getElementById('efficiencySelect');
+
+  // Set today date display
+  todayDateEl.textContent = today;
+
+  // Target mins Mon-Thurs = 240, Fri=180, Sat-Sun=0
+  function getTodayTarget() {
+    const day = dayOfWeek(today);
+    if (day >=1 && day <=4) return 240;
+    if (day === 5) return 180;
+    return 0;
+  }
+  dailyTargetEl.textContent = getTodayTarget();
+
+  // Show projects in sidebar, allow selecting
+  function renderProjects() {
+    if (data.projects.length === 0) {
+      projectListEl.textContent = 'No projects added yet.';
+      return;
+    }
+    projectListEl.innerHTML = '';
+    data.projects.forEach(proj => {
+      const btn = document.createElement('button');
+      btn.textContent = proj + (data.selectedProject === proj ? ' ✓' : '');
+      btn.onclick = () => {
+        data.selectedProject = proj;
+        renderProjects();
+        saveData();
+      };
+      projectListEl.appendChild(btn);
+    });
+  }
+
+  renderProjects();
+
+  // Add new project button handler
+  document.getElementById('addProjectBtn').onclick = () => {
+    const input = document.getElementById('projectNameInput');
+    const val = input.value.trim();
+    if (val && !data.projects.includes(val)) {
+      data.projects.push(val);
+      input.value = '';
+      data.selectedProject = val;
+      renderProjects();
+      saveData();
+      renderDailyProjectTimes();
+      renderTopProjects();
+    }
+  };
+
+  // Timer logic
+  let timerInterval = null;
+  const timerDisplay = document.getElementById('timerDisplay');
+  let timerRunning = false;
+
+  function updateTimer() {
+    timerDisplay.textContent = formatTime(data.timerSeconds);
+  }
+
+  function tickTimer() {
+    const eff = data.efficiency === 'full' ? 1 : 0.5;
+    data.timerSeconds += eff;
+    updateTimer();
+    addTimeToProject(eff / 60);
+    saveData();
+  }
+
+  document.getElementById('timerStart').onclick = () => {
+    if (timerRunning) return;
+    timerRunning = true;
+    timerInterval = setInterval(tickTimer, 1000);
+  };
+
+  document.getElementById('timerPause').onclick = () => {
+    timerRunning = false;
+    clearInterval(timerInterval);
+  };
+
+  document.getElementById('timerReset').onclick = () => {
+    timerRunning = false;
+    clearInterval(timerInterval);
+    data.timerSeconds = 0;
+    updateTimer();
+    saveData();
+  };
+
+  updateTimer();
+
+  // Stopwatch logic
+  let stopwatchInterval = null;
+  const stopwatchDisplay = document.getElementById('stopwatchDisplay');
+  let stopwatchRunning = false;
+
+  function updateStopwatch() {
+    stopwatchDisplay.textContent = formatTime(data.stopwatchSeconds);
+  }
+
+  function tickStopwatch() {
+    const eff = data.efficiency === 'full' ? 1 : 0.5;
+    data.stopwatchSeconds += eff;
+    updateStopwatch();
+    addTimeToProject(eff / 60);
+    saveData();
+  }
+
+  document.getElementById('stopwatchStart').onclick = () => {
+    if (stopwatchRunning) return;
+    stopwatchRunning = true;
+    stopwatchInterval = setInterval(tickStopwatch, 1000);
+  };
+
+  document.getElementById('stopwatchPause').onclick = () => {
+    stopwatchRunning = false;
+    clearInterval(stopwatchInterval);
+  };
+
+  document.getElementById('stopwatchReset').onclick = () => {
+    stopwatchRunning = false;
+    clearInterval(stopwatchInterval);
+    data.stopwatchSeconds = 0;
+    updateStopwatch();
+    saveData();
+  };
+
+  updateStopwatch();
+
+  // Efficiency selector change
+  efficiencySelect.value = data.efficiency;
+  efficiencySelect.onchange = () => {
+    data.efficiency = efficiencySelect.value;
+    saveData();
+  };
+
+  // Add time to selected project & dailyRecords
+  function addTimeToProject
