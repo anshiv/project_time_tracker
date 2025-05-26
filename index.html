@@ -74,18 +74,20 @@
 
   <div class="container">
         <div class="box" style="max-height: 400px; overflow-y: auto;">
-      <h2>📝 Tasks</h2>
-      <input type="text" id="taskInput" placeholder="Enter task name" />
-      <select id="taskStatus">
-        <option value="backlog">Backlog</option>
-        <option value="to_be_picked">To Be Picked</option>
-        <option value="in_progress">In Progress</option>
-        <option value="top_priority">Top Priority</option>
-        <option value="completed">Completed</option>
-      </select>
-      <button onclick="addTask()">Add Task</button>
-      <div id="taskList"></div>
-    </div>
+  <h2>📝 Tasks</h2>
+  <input type="text" id="taskInput" placeholder="Enter task name" />
+  <select id="taskProject"></select>
+  <select id="taskStatus">
+    <option value="backlog">Backlog</option>
+    <option value="to_be_picked">To Be Picked</option>
+    <option value="in_progress">In Progress</option>
+    <option value="top_priority">Top Priority</option>
+    <option value="completed">Completed</option>
+  </select>
+  <button onclick="addTask()">Add Task</button>
+  <div id="taskList" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+</div>
+  
 
     <div class="box">
       <h2>Timer</h2>
@@ -372,7 +374,7 @@ renderAllTimeAverage();
     };
 
 
-    const tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
 const archive = JSON.parse(localStorage.getItem("archive") || "[]");
 
 function saveTasks() {
@@ -383,8 +385,9 @@ function saveTasks() {
 function addTask() {
   const name = document.getElementById("taskInput").value.trim();
   const status = document.getElementById("taskStatus").value;
+  const project = document.getElementById("taskProject").value;
   if (!name) return alert("Task name required.");
-  tasks.push({ name, status });
+  tasks.push({ name, status, project });
   document.getElementById("taskInput").value = "";
   renderTasks();
   saveTasks();
@@ -398,18 +401,75 @@ function archiveTask(index) {
   saveTasks();
 }
 
+function updateTaskStatus(index, newStatus) {
+  tasks[index].status = newStatus;
+  saveTasks();
+}
+
+function updateTaskProject(index, newProject) {
+  tasks[index].project = newProject;
+  saveTasks();
+}
+
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+function drag(ev) {
+  ev.dataTransfer.setData("text", ev.target.id);
+}
+
+function drop(ev) {
+  ev.preventDefault();
+  const draggedId = ev.dataTransfer.getData("text");
+  const draggedIndex = parseInt(draggedId.replace("task-", ""));
+  const dropTarget = ev.target.closest(".task-item");
+  if (!dropTarget) return;
+
+  const dropIndex = parseInt(dropTarget.id.replace("task-", ""));
+
+  // Swap
+  const temp = tasks[draggedIndex];
+  tasks.splice(draggedIndex, 1);
+  tasks.splice(dropIndex, 0, temp);
+
+  renderTasks();
+  saveTasks();
+}
+
+function renderProjectDropdown(selectId, selectedValue) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = "";
+  const option = document.createElement("option");
+  option.value = "";
+  option.text = "-- Map to Project --";
+  select.appendChild(option);
+  Object.keys(projectData).forEach((proj) => {
+    const opt = document.createElement("option");
+    opt.value = proj;
+    opt.text = proj;
+    if (proj === selectedValue) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
 function renderTasks() {
   const container = document.getElementById("taskList");
   container.innerHTML = "";
 
   tasks.forEach((task, idx) => {
     const div = document.createElement("div");
+    div.className = "task-item";
+    div.id = `task-${idx}`;
+    div.draggable = true;
+    div.ondragstart = drag;
     div.style.border = "1px solid #ccc";
     div.style.borderRadius = "5px";
     div.style.padding = "8px";
     div.style.marginTop = "8px";
     div.style.backgroundColor = "#fdfdfd";
 
+    const projectDropdownId = `proj-${idx}`;
     div.innerHTML = `
       <strong>${task.name}</strong><br/>
       Status: 
@@ -420,15 +480,17 @@ function renderTasks() {
         <option value="top_priority" ${task.status === "top_priority" ? "selected" : ""}>Top Priority</option>
         <option value="completed" ${task.status === "completed" ? "selected" : ""}>Completed</option>
       </select><br/>
+      Project:
+      <select id="${projectDropdownId}" onchange="updateTaskProject(${idx}, this.value)"></select>
+      <br/>
       <button onclick="archiveTask(${idx})">Archive</button>
     `;
     container.appendChild(div);
+    renderProjectDropdown(projectDropdownId, task.project);
   });
-}
 
-function updateTaskStatus(index, newStatus) {
-  tasks[index].status = newStatus;
-  saveTasks();
+  // Also re-render the new-task dropdown
+  renderProjectDropdown("taskProject");
 }
 
 function renderArchive() {
@@ -441,16 +503,14 @@ function renderArchive() {
     div.style.padding = "6px";
     div.style.marginTop = "5px";
     div.style.backgroundColor = "#f0f0f0";
-    div.innerHTML = `<strong>${task.name}</strong> — ${task.status}`;
+    div.innerHTML = `<strong>${task.name}</strong> — ${task.status} (${task.project || "No Project"})`;
     container.appendChild(div);
   });
 }
 
-// Load on page start
+// On page load
 renderTasks();
 renderArchive();
-
-
     // Stopwatch
     document.getElementById("stopwatchStart").onclick = () => {
       if (!stopwatchInt) stopwatchInt = setInterval(() => tick('stopwatch'), 1000);
