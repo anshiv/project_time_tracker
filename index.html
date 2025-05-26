@@ -3,31 +3,32 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Project Time Tracker</title>
+<title>Simple Time Tracker</title>
 <style>
   body {
     font-family: Arial, sans-serif;
-    background: #fafafa;
     margin: 20px;
+    background: #f0f4f8;
     color: #222;
   }
   h1, h2 {
     margin-bottom: 10px;
   }
-  .flex-row {
+  .container {
     display: flex;
     gap: 20px;
-    margin-bottom: 20px;
+    flex-wrap: wrap;
   }
   .box {
     background: white;
     padding: 15px;
     border-radius: 6px;
     box-shadow: 0 0 8px #ccc;
+    min-width: 280px;
     flex: 1;
   }
   button {
-    margin: 5px 0;
+    margin: 5px 5px 5px 0;
     padding: 8px 14px;
     font-size: 14px;
     cursor: pointer;
@@ -35,18 +36,17 @@
   input[type=text] {
     padding: 6px 10px;
     font-size: 14px;
-    width: 200px;
+    width: 180px;
     margin-right: 8px;
   }
   select {
-    font-size: 14px;
     padding: 6px 10px;
-    margin-left: 8px;
+    font-size: 14px;
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
+    margin-top: 12px;
   }
   th, td {
     border: 1px solid #ddd;
@@ -56,18 +56,15 @@
   th {
     background: #eee;
   }
-  .small {
-    font-size: 12px;
-    color: #555;
-  }
 </style>
 </head>
 <body>
 
-<h1>Project Time Tracker</h1>
+<h1>Simple Time Tracker</h1>
 
 <div>
-  <label>Efficiency: 
+  <label>
+    Efficiency:
     <select id="efficiencySelect">
       <option value="full">Full Efficiency</option>
       <option value="half">Half Efficiency</option>
@@ -75,272 +72,249 @@
   </label>
 </div>
 
-<div class="flex-row">
-  <div class="box" style="max-width: 300px;">
+<div class="container">
+  <div class="box">
     <h2>Timer</h2>
-    <div id="timerDisplay">00:00:00</div>
-    <button id="timerStart">Start</button>
-    <button id="timerPause">Pause</button>
-    <button id="timerReset">Reset</button>
+    <div id="timerDisplay" style="font-size: 2em;">00:00:00</div>
+    <button id="timerStartBtn">Start</button>
+    <button id="timerPauseBtn">Pause</button>
+    <button id="timerResetBtn">Reset</button>
   </div>
 
-  <div class="box" style="max-width: 300px;">
+  <div class="box">
     <h2>Stopwatch</h2>
-    <div id="stopwatchDisplay">00:00:00</div>
-    <button id="stopwatchStart">Start</button>
-    <button id="stopwatchPause">Pause</button>
-    <button id="stopwatchReset">Reset</button>
+    <div id="stopwatchDisplay" style="font-size: 2em;">00:00:00</div>
+    <button id="stopwatchStartBtn">Start</button>
+    <button id="stopwatchPauseBtn">Pause</button>
+    <button id="stopwatchResetBtn">Reset</button>
+  </div>
+
+  <div class="box">
+    <h2>Projects</h2>
+    <input type="text" id="projectInput" placeholder="New project name" />
+    <button id="addProjectBtn">Add Project</button>
+    <div id="projectsList" style="margin-top: 10px;"></div>
   </div>
 </div>
 
-<div class="box" style="max-width: 350px;">
-  <h2>Projects</h2>
-  <input type="text" id="projectNameInput" placeholder="New project name" />
-  <button id="addProjectBtn">Add Project</button>
-
-  <div id="projectList" style="margin-top: 10px;"></div>
-</div>
-
-<div class="box">
+<div class="box" style="margin-top: 20px;">
   <h2>Daily Summary (<span id="todayDate"></span>)</h2>
-  <div>Total Time Invested: <span id="dailyTotalTime">0</span> mins</div>
-  <div>Target Today: <span id="dailyTarget">240</span> mins</div>
-
-  <table id="dailyProjectTimesTable">
+  <div>Total Time Invested: <span id="totalMinutes">0</span> minutes</div>
+  <div>Target Today: <span id="dailyTarget">240</span> minutes</div>
+  <table>
     <thead>
       <tr><th>Project</th><th>Minutes</th></tr>
     </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<div class="box" style="margin-top: 20px;">
-  <h2>Top 5 Projects This Month</h2>
-  <table id="topProjectsTable">
-    <thead>
-      <tr><th>Project</th><th>Total Minutes</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<div class="box" style="margin-top: 20px;">
-  <h2>Daywise Averages (Mon-Fri)</h2>
-  <table id="daywiseAveragesTable">
-    <thead>
-      <tr><th>Day</th><th>Average Minutes</th></tr>
-    </thead>
-    <tbody></tbody>
+    <tbody id="dailyProjectTimesBody"></tbody>
   </table>
 </div>
 
 <script>
 (() => {
-  const MS_IN_DAY = 86400000;
+  const STORAGE_KEY = 'timeTrackerSimpleData';
 
-  // Utils
-  function formatTime(seconds) {
-    const hrs = Math.floor(seconds/3600).toString().padStart(2,'0');
-    const mins = Math.floor((seconds%3600)/60).toString().padStart(2,'0');
-    const secs = Math.floor(seconds%60).toString().padStart(2,'0');
-    return `${hrs}:${mins}:${secs}`;
+  function formatSecondsToHMS(sec) {
+    const h = Math.floor(sec/3600);
+    const m = Math.floor((sec%3600)/60);
+    const s = Math.floor(sec%60);
+    return [h,m,s].map(n => n.toString().padStart(2,'0')).join(':');
   }
-  function getTodayDate() {
+
+  function getToday() {
     return new Date().toISOString().slice(0,10);
   }
-  function dayOfWeek(dateStr) {
-    return new Date(dateStr).getDay(); // 0=Sun ... 6=Sat
+
+  function dayOfWeekNum() {
+    return new Date().getDay(); // 0=Sun ... 6=Sat
   }
-  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  // LocalStorage key
-  const STORAGE_KEY = 'timeTrackerData';
-
-  // Load or initialize data
+  // Load saved data or initialize
   let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-
   if (!data.projects) data.projects = [];
   if (!data.dailyRecords) data.dailyRecords = {};
-  if (!data.efficiency) data.efficiency = 'full';
   if (!data.timerSeconds) data.timerSeconds = 0;
   if (!data.stopwatchSeconds) data.stopwatchSeconds = 0;
   if (!data.selectedProject) data.selectedProject = null;
-  if (!data.lastSavedDate) data.lastSavedDate = getTodayDate();
+  if (!data.efficiency) data.efficiency = 'full';
+  if (!data.lastSavedDate) data.lastSavedDate = getToday();
 
-  // Reset daily timer if day changed
-  const today = getTodayDate();
+  const today = getToday();
+
+  // Reset timer and stopwatch if date changed
   if (data.lastSavedDate !== today) {
     data.timerSeconds = 0;
     data.stopwatchSeconds = 0;
-    if (!data.dailyRecords[today]) data.dailyRecords[today] = { totalMinutes: 0, projectTimes: {} };
+    if (!data.dailyRecords[today]) data.dailyRecords[today] = {};
     data.lastSavedDate = today;
   }
 
-  // Save data helper
-  function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-
-  // UI elements
-  const todayDateEl = document.getElementById('todayDate');
-  const dailyTotalTimeEl = document.getElementById('dailyTotalTime');
-  const dailyTargetEl = document.getElementById('dailyTarget');
-  const dailyProjectTimesBody = document.querySelector('#dailyProjectTimesTable tbody');
-  const topProjectsBody = document.querySelector('#topProjectsTable tbody');
-  const daywiseAveragesBody = document.querySelector('#daywiseAveragesTable tbody');
-  const projectListEl = document.getElementById('projectList');
-  const efficiencySelect = document.getElementById('efficiencySelect');
-
-  todayDateEl.textContent = today;
-
-  function getTodayTarget() {
-    const day = dayOfWeek(today);
+  // Determine daily target
+  function getDailyTarget() {
+    const day = dayOfWeekNum();
     if (day >= 1 && day <= 4) return 240; // Mon-Thu
     if (day === 5) return 180; // Fri
     return 0; // Sat, Sun
   }
-  dailyTargetEl.textContent = getTodayTarget();
+
+  // UI refs
+  const todayDateEl = document.getElementById('todayDate');
+  const dailyTargetEl = document.getElementById('dailyTarget');
+  const totalMinutesEl = document.getElementById('totalMinutes');
+  const dailyProjectTimesBody = document.getElementById('dailyProjectTimesBody');
+  const projectsListEl = document.getElementById('projectsList');
+  const efficiencySelect = document.getElementById('efficiencySelect');
+
+  todayDateEl.textContent = today;
+  dailyTargetEl.textContent = getDailyTarget();
+  efficiencySelect.value = data.efficiency;
+
+  // Save data
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
 
   // Render projects list
   function renderProjects() {
+    projectsListEl.innerHTML = '';
     if (data.projects.length === 0) {
-      projectListEl.textContent = 'No projects added yet.';
+      projectsListEl.textContent = 'No projects yet.';
       return;
     }
-    projectListEl.innerHTML = '';
-    data.projects.forEach(proj => {
+    data.projects.forEach(p => {
       const btn = document.createElement('button');
-      btn.textContent = proj + (data.selectedProject === proj ? ' ✓' : '');
+      btn.textContent = p + (data.selectedProject === p ? ' ✓' : '');
       btn.onclick = () => {
-        data.selectedProject = proj;
+        data.selectedProject = p;
         renderProjects();
-        saveData();
+        save();
       };
-      projectListEl.appendChild(btn);
+      projectsListEl.appendChild(btn);
     });
   }
 
-  renderProjects();
-
-  // Add new project handler
-  document.getElementById('addProjectBtn').onclick = () => {
-    const input = document.getElementById('projectNameInput');
-    const val = input.value.trim();
-    if (!val) return alert('Project name cannot be empty');
-    if (data.projects.includes(val)) return alert('Project already exists');
-    data.projects.push(val);
-    data.selectedProject = val;
-    input.value = '';
-    renderProjects();
-    saveData();
-    renderDailyProjectTimes();
-    renderTopProjects();
-  };
-
-  // Add time to project & daily records
-  function addTimeToProject(minutes) {
-    if (!data.selectedProject) return; // no project selected
-    // Daily record for today
-    if (!data.dailyRecords[today]) data.dailyRecords[today] = { totalMinutes: 0, projectTimes: {} };
-    const dayRecord = data.dailyRecords[today];
-    dayRecord.totalMinutes += minutes;
-    if (!dayRecord.projectTimes[data.selectedProject]) dayRecord.projectTimes[data.selectedProject] = 0;
-    dayRecord.projectTimes[data.selectedProject] += minutes;
-
-    // Also update monthly totals (for top projects)
-    if (!data.monthlyTotals) data.monthlyTotals = {};
-    const monthKey = today.slice(0,7); // YYYY-MM
-    if (!data.monthlyTotals[monthKey]) data.monthlyTotals[monthKey] = {};
-    if (!data.monthlyTotals[monthKey][data.selectedProject]) data.monthlyTotals[monthKey][data.selectedProject] = 0;
-    data.monthlyTotals[monthKey][data.selectedProject] += minutes;
-
-    // Update daily totals displayed
-    dailyTotalTimeEl.textContent = Math.round(dayRecord.totalMinutes);
-
-    renderDailyProjectTimes();
-    renderTopProjects();
-    saveData();
+  // Render daily project times
+  function renderDailyTimes() {
+    dailyProjectTimesBody.innerHTML = '';
+    let total = 0;
+    if (data.dailyRecords[today]) {
+      for (const [proj, mins] of Object.entries(data.dailyRecords[today])) {
+        total += mins;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${proj}</td><td>${Math.round(mins)}</td>`;
+        dailyProjectTimesBody.appendChild(tr);
+      }
+    }
+    totalMinutesEl.textContent = Math.round(total);
   }
 
-  // Timer
-  let timerInterval = null;
+  // Add time to selected project and update daily records
+  function addMinutes(minutes) {
+    if (!data.selectedProject) return;
+    if (!data.dailyRecords[today]) data.dailyRecords[today] = {};
+    if (!data.dailyRecords[today][data.selectedProject]) data.dailyRecords[today][data.selectedProject] = 0;
+    data.dailyRecords[today][data.selectedProject] += minutes;
+  }
+
+  // Timer logic
   const timerDisplay = document.getElementById('timerDisplay');
-  let timerRunning = false;
+  let timerInterval = null;
 
-  function updateTimer() {
-    timerDisplay.textContent = formatTime(data.timerSeconds);
+  function updateTimerDisplay() {
+    timerDisplay.textContent = formatSecondsToHMS(data.timerSeconds);
   }
 
-  function tickTimer() {
+  function timerTick() {
     const eff = data.efficiency === 'full' ? 1 : 0.5;
     data.timerSeconds += eff;
-    updateTimer();
-    addTimeToProject(eff / 60);
+    addMinutes(eff / 60);
+    updateTimerDisplay();
+    renderDailyTimes();
+    save();
   }
 
-  document.getElementById('timerStart').onclick = () => {
-    if (timerRunning) return;
-    timerRunning = true;
-    timerInterval = setInterval(tickTimer, 1000);
+  document.getElementById('timerStartBtn').onclick = () => {
+    if (timerInterval) return;
+    timerInterval = setInterval(timerTick, 1000);
   };
-  document.getElementById('timerPause').onclick = () => {
-    timerRunning = false;
+  document.getElementById('timerPauseBtn').onclick = () => {
     clearInterval(timerInterval);
+    timerInterval = null;
   };
-  document.getElementById('timerReset').onclick = () => {
-    timerRunning = false;
+  document.getElementById('timerResetBtn').onclick = () => {
     clearInterval(timerInterval);
+    timerInterval = null;
     data.timerSeconds = 0;
-    updateTimer();
-    saveData();
+    updateTimerDisplay();
+    save();
   };
 
-  updateTimer();
+  updateTimerDisplay();
 
-  // Stopwatch
-  let stopwatchInterval = null;
+  // Stopwatch logic
   const stopwatchDisplay = document.getElementById('stopwatchDisplay');
-  let stopwatchRunning = false;
+  let stopwatchInterval = null;
 
-  function updateStopwatch() {
-    stopwatchDisplay.textContent = formatTime(data.stopwatchSeconds);
+  function updateStopwatchDisplay() {
+    stopwatchDisplay.textContent = formatSecondsToHMS(data.stopwatchSeconds);
   }
 
-  function tickStopwatch() {
+  function stopwatchTick() {
     const eff = data.efficiency === 'full' ? 1 : 0.5;
     data.stopwatchSeconds += eff;
-    updateStopwatch();
-    addTimeToProject(eff / 60);
+    addMinutes(eff / 60);
+    updateStopwatchDisplay();
+    renderDailyTimes();
+    save();
   }
 
-  document.getElementById('stopwatchStart').onclick = () => {
-    if (stopwatchRunning) return;
-    stopwatchRunning = true;
-    stopwatchInterval = setInterval(tickStopwatch, 1000);
+  document.getElementById('stopwatchStartBtn').onclick = () => {
+    if (stopwatchInterval) return;
+    stopwatchInterval = setInterval(stopwatchTick, 1000);
   };
-  document.getElementById('stopwatchPause').onclick = () => {
-    stopwatchRunning = false;
+  document.getElementById('stopwatchPauseBtn').onclick = () => {
     clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
   };
-  document.getElementById('stopwatchReset').onclick = () => {
-    stopwatchRunning = false;
+  document.getElementById('stopwatchResetBtn').onclick = () => {
     clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
     data.stopwatchSeconds = 0;
-    updateStopwatch();
-    saveData();
+    updateStopwatchDisplay();
+    save();
   };
 
-  updateStopwatch();
+  updateStopwatchDisplay();
 
-  // Efficiency selector
-  efficiencySelect.value = data.efficiency;
+  // Add project button
+  document.getElementById('addProjectBtn').onclick = () => {
+    const val = document.getElementById('projectInput').value.trim();
+    if (!val) {
+      alert('Please enter a project name');
+      return;
+    }
+    if (data.projects.includes(val)) {
+      alert('Project already exists');
+      return;
+    }
+    data.projects.push(val);
+    data.selectedProject = val;
+    document.getElementById('projectInput').value = '';
+    renderProjects();
+    save();
+  };
+
+  // Efficiency change
   efficiencySelect.onchange = () => {
     data.efficiency = efficiencySelect.value;
-    saveData();
+    save();
   };
 
-  // Render daily project times table
-  function renderDailyProjectTimes() {
-    dailyProjectTimesBody.innerHTML = '';
-    const dayRecord = data.dailyRecords[today];
-    if (!dayRecord || !dayRecord
+  // Initial renders
+  renderProjects();
+  renderDailyTimes();
+
+})();
+</script>
+
+</body>
+</html>
