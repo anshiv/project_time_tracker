@@ -1,627 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Time Tracker Enhanced</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Time Tracker</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f5f7fa;
-      color: #333;
-      padding: 20px;
-    }
-    h1, h2 {
-      color: #2c3e50;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 2rem;
     }
     .container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-    .box {
-      background: #fff;
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
       border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    button {
-      margin: 5px 5px 5px 0;
-      padding: 8px 12px;
-      font-size: 14px;
-      background: #3498db;
-      color: #fff;
-      border: none;
+    h1, h2 {
+      text-align: center;
+    }
+    input, button, select {
+      width: 100%;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ccc;
       border-radius: 5px;
-      cursor: pointer;
     }
-    button:hover {
-      background: #2980b9;
-    }
-    input, select {
-      padding: 8px;
-      margin: 5px 0;
-      width: 100%;
-      font-size: 14px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-    th, td {
-      border-bottom: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    .project-buttons {
-      margin-top: 8px;
-    }
-    .manual-input {
+    .project {
       display: flex;
-      gap: 5px;
-      margin-top: 5px;
+      justify-content: space-between;
+      margin-top: 1rem;
+      background-color: #f9f9f9;
+      padding: 0.5rem;
+      border-radius: 5px;
     }
-    .manual-input input {
-      width: 60px;
+    .archived {
+      text-decoration: line-through;
+      color: gray;
     }
   </style>
 </head>
 <body>
-
-  <h1>Daily Time Tracker</h1>
-
-  <label for="efficiencySelect">Efficiency: </label>
-<select id="efficiencySelect">
-  <option value="1">1x</option>
-  <option value="0.5">0.5x</option>
-</select>
-
   <div class="container">
-        <div class="box" style="max-height: 400px; overflow-y: auto;">
-  <h2>📝 Tasks</h2>
-  <input type="text" id="taskInput" placeholder="Enter task name" />
-  <select id="taskProject"></select>
-  <select id="taskStatus">
-    <option value="backlog">Backlog</option>
-    <option value="to_be_picked">To Be Picked</option>
-    <option value="in_progress">In Progress</option>
-    <option value="top_priority">Top Priority</option>
-    <option value="completed">Completed</option>
-  </select>
-  <button onclick="addTask()">Add Task</button>
-  <div id="taskList" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-</div>
-  
+    <h1>Time Tracker</h1>
 
-    <div class="box">
-      <h2>Timer</h2>
-      <div id="timerDisplay">00:00:00</div>
-      <button id="timerStart">Start</button>
-      <button id="timerPause">Pause</button>
-      <button id="timerReset">Reset</button>
-    </div>
+    <h2>Projects</h2>
+    <input type="text" id="projectName" placeholder="Enter project name">
+    <button onclick="addProject()">Add Project</button>
 
-    <div class="box">
-      <h2>Stopwatch</h2>
-      <div id="stopwatchDisplay">00:00:00</div>
-      <button id="stopwatchStart">Start</button>
-      <button id="stopwatchPause">Pause</button>
-      <button id="stopwatchReset">Reset</button>
-    </div>
+    <h2>Timer</h2>
+    <input type="number" id="timerInput" placeholder="Set timer (minutes)">
+    <button onclick="startTimer()">Start Timer</button>
+    <div id="timerDisplay">00:00</div>
 
-    <div class="box">
-      <h2>Projects</h2>
-      <input type="text" id="projectName" placeholder="Enter project name" />
-      <button onclick="addProject()">Add Project</button>
-      <div id="projectList"></div>
-    </div>
-  </div>
+    <h2>Stopwatch</h2>
+    <div id="stopwatchDisplay">00:00:00</div>
+    <button onclick="startStopwatch()">Start</button>
+    <button onclick="stopStopwatch()">Stop</button>
+    <button onclick="resetStopwatch()">Reset</button>
 
-  <div class="box">
-    <h2>Daily Summary (<span id="todayLabel"></span>)</h2>
-    <p>Total Minutes: <span id="totalMinutes">0</span> / Target: <span id="dailyTarget">240</span></p>
-    <table>
-      <thead>
-        <tr><th>Project</th><th>Minutes</th><th>Actions</th></tr>
-      </thead>
-      <tbody id="summaryBody"></tbody>
-    </table>
+    <h2>Assign to Project</h2>
+    <select id="projectDropdown"></select>
+    <button onclick="assignTime()">Assign Time</button>
+
+    <h2>All Projects</h2>
+    <div id="projectList"></div>
+
+    <h2>Archived Projects</h2>
+    <div id="archivedList"></div>
   </div>
 
   <script>
-    const projectData = JSON.parse(localStorage.getItem("projects") || "{}");
-    const selectedDate = new Date().toISOString().slice(0, 10);
-    const summaryBody = document.getElementById("summaryBody");
-    const totalMinutesEl = document.getElementById("totalMinutes");
-    const todayLabel = document.getElementById("todayLabel");
-    todayLabel.textContent = selectedDate;
+    let projects = [];
+    let archivedProjects = [];
+    let stopwatchInterval, stopwatchSeconds = 0;
+    let timerTimeout;
 
-    let timerSec = 0, stopwatchSec = 0;
-    let timerInt = null, stopwatchInt = null;
-    let currentProject = null;
-
-    function pad(n) { return n.toString().padStart(2, '0'); }
-    function formatTime(s) {
-      const h = Math.floor(s / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const sec = s % 60;
-      return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+    function formatTime(secs) {
+      const h = Math.floor(secs / 3600).toString().padStart(2, '0');
+      const m = Math.floor((secs % 3600) / 60).toString().padStart(2, '0');
+      const s = (secs % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
     }
 
-    function updateDisplays() {
-      document.getElementById("timerDisplay").textContent = formatTime(timerSec);
-      document.getElementById("stopwatchDisplay").textContent = formatTime(stopwatchSec);
-    }
-
-    function saveData() {
-      localStorage.setItem("projects", JSON.stringify(projectData));
-    }
-
-    function updateSummary() {
-      summaryBody.innerHTML = "";
-      let total = 0;
-      Object.entries(projectData).forEach(([name, rec]) => {
-        const min = rec[selectedDate] || 0;
-        total += min;
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${name}</td>
-          <td>${min}</td>
-          <td>
-            <div class="manual-input">
-              <input type="number" id="add-${name}" placeholder="+/-">
-              <button onclick="modifyMinutes('${name}', 'add')">Add</button>
-              <button onclick="modifyMinutes('${name}', 'subtract')">Subtract</button>
-              <button onclick="deleteProject('${name}')">Delete</button>
-            </div>
-          </td>
-        `;
-        summaryBody.appendChild(tr);
-      });
-      totalMinutesEl.textContent = total;
+    function formatMinutes(mins) {
+      const m = Math.floor(mins / 60).toString().padStart(2, '0');
+      const s = (mins % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
     }
 
     function addProject() {
-      const name = document.getElementById("projectName").value.trim();
-      if (!name || projectData[name]) return alert("Invalid or duplicate project");
-      projectData[name] = {};
-      currentProject = name;
-      document.getElementById("projectName").value = "";
-      updateSummary();
-      saveData();
-    }
-
-    function deleteProject(name) {
-      if (confirm(`Delete project "${name}"?`)) {
-        delete projectData[name];
-        if (currentProject === name) currentProject = null;
-        updateSummary();
-        saveData();
+      const name = document.getElementById('projectName').value;
+      if (name && !projects.find(p => p.name === name)) {
+        projects.push({ name, time: 0 });
+        updateProjectDropdown();
+        renderProjects();
+        document.getElementById('projectName').value = '';
       }
     }
 
-    function modifyMinutes(name, type) {
-      const input = document.getElementById(`add-${name}`);
-      const val = parseInt(input.value);
-      if (isNaN(val)) return alert("Enter a number");
-      if (!projectData[name][selectedDate]) projectData[name][selectedDate] = 0;
-      if (type === "add") projectData[name][selectedDate] += val;
-      else projectData[name][selectedDate] = Math.max(0, projectData[name][selectedDate] - val);
-      input.value = "";
-      updateSummary();
-      saveData();
+    function archiveProject(name) {
+      const index = projects.findIndex(p => p.name === name);
+      if (index > -1) {
+        archivedProjects.push(projects[index]);
+        projects.splice(index, 1);
+        updateProjectDropdown();
+        renderProjects();
+      }
     }
 
-function tick(type) {
-  if (!currentProject) return;
-  if (!projectData[currentProject][selectedDate]) projectData[currentProject][selectedDate] = 0;
+    function deleteArchived(name) {
+      archivedProjects = archivedProjects.filter(p => p.name !== name);
+      renderProjects();
+    }
 
-  const efficiency = parseFloat(document.getElementById('efficiencySelect').value) || 1;
+    function renderProjects() {
+      const list = document.getElementById('projectList');
+      list.innerHTML = '';
+      projects.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'project';
+        div.innerHTML = `${p.name} - ${formatMinutes(p.time)} <button onclick="archiveProject('${p.name}')">Archive</button>`;
+        list.appendChild(div);
+      });
 
-  if (type === 'timer') timerSec += 1;
-  if (type === 'stopwatch') stopwatchSec += 1;
+      const archived = document.getElementById('archivedList');
+      archived.innerHTML = '';
+      archivedProjects.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'project archived';
+        div.innerHTML = `${p.name} - ${formatMinutes(p.time)} <button onclick="deleteArchived('${p.name}')">Delete</button>`;
+        archived.appendChild(div);
+      });
+    }
 
-  // Add minutes worked, adjusted by efficiency
-  projectData[currentProject][selectedDate] += (1 / 60) * efficiency;
+    function updateProjectDropdown() {
+      const dropdown = document.getElementById('projectDropdown');
+      dropdown.innerHTML = '';
+      projects.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.name;
+        option.textContent = p.name;
+        dropdown.appendChild(option);
+      });
+    }
 
-  updateDisplays();
-  updateSummary();
-  saveData();
-}
+    function startTimer() {
+      const minutes = parseInt(document.getElementById('timerInput').value);
+      if (isNaN(minutes) || minutes <= 0) return;
 
-  // --- New Statistics Tables ---
+      document.getElementById('timerDisplay').textContent = `${minutes}:00`;
+      clearTimeout(timerTimeout);
 
-  // Utility: get current month
-  function getCurrentMonth() {
-    const now = new Date();
-    return now.toISOString().slice(0, 7); // "YYYY-MM"
-  }
-
-  // Utility: get week number of year
-  function getWeekNumber(d) {
-    d = new Date(d);
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-    const yearStart = new Date(d.getFullYear(), 0, 1);
-    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  }
-
-  // 1. Top 5 Monthly Projects
-  function renderTopMonthlyProjects() {
-    const month = getCurrentMonth();
-    const totals = {};
-    for (const [name, records] of Object.entries(projectData)) {
-      for (const [date, minutes] of Object.entries(records)) {
-        if (date.startsWith(month)) {
-          totals[name] = (totals[name] || 0) + minutes;
+      let remaining = minutes * 60;
+      const interval = setInterval(() => {
+        remaining--;
+        document.getElementById('timerDisplay').textContent = formatMinutes(remaining);
+        if (remaining <= 0) {
+          clearInterval(interval);
+          alert('Timer done! Assigning time...');
+          const projectName = document.getElementById('projectDropdown').value;
+          const project = projects.find(p => p.name === projectName);
+          if (project) {
+            project.time += minutes * 60;
+            renderProjects();
+          }
         }
+      }, 1000);
+    }
+
+    function startStopwatch() {
+      if (stopwatchInterval) return;
+      stopwatchInterval = setInterval(() => {
+        stopwatchSeconds++;
+        document.getElementById('stopwatchDisplay').textContent = formatTime(stopwatchSeconds);
+      }, 1000);
+    }
+
+    function stopStopwatch() {
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+    }
+
+    function resetStopwatch() {
+      stopwatchSeconds = 0;
+      document.getElementById('stopwatchDisplay').textContent = '00:00:00';
+      stopStopwatch();
+    }
+
+    function assignTime() {
+      const projectName = document.getElementById('projectDropdown').value;
+      const project = projects.find(p => p.name === projectName);
+      if (project) {
+        project.time += stopwatchSeconds;
+        renderProjects();
+        resetStopwatch();
       }
     }
 
-    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    let html = `<h2>Top 5 Projects - ${month}</h2><table><thead><tr><th>Project</th><th>Minutes</th></tr></thead><tbody>`;
-    for (const [name, min] of sorted) {
-      html += `<tr><td>${name}</td><td>${Math.round(min)}</td></tr>`;
-    }
-    html += '</tbody></table>';
-
-    const box = document.createElement('div');
-    box.className = 'box';
-    box.innerHTML = html;
-    document.body.appendChild(box);
-  }
-
-  // 2. Weekday-wise Average (Mon–Fri)
-  function renderWeekdayAverages() {
-    const weekdayTotals = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0 };
-    const counts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0 };
-
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    for (const records of Object.values(projectData)) {
-      for (const [date, minutes] of Object.entries(records)) {
-        const d = new Date(date);
-        const weekday = days[d.getDay()];
-        if (weekday in weekdayTotals) {
-          weekdayTotals[weekday] += minutes;
-          counts[weekday]++;
-        }
-      }
-    }
-
-    let html = `<h2>Weekday Averages</h2><table><thead><tr><th>Weekday</th><th>Avg. Minutes</th></tr></thead><tbody>`;
-    for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']) {
-      const avg = counts[day] ? (weekdayTotals[day] / counts[day]) : 0;
-      html += `<tr><td>${day}</td><td>${Math.round(avg)}</td></tr>`;
-    }
-    html += '</tbody></table>';
-
-    const box = document.createElement('div');
-    box.className = 'box';
-    box.innerHTML = html;
-    document.body.appendChild(box);
-  }
-
-  // 3. Weekly Stats
-  function renderWeeklyStats() {
-    const weekData = {};
-    for (const [_, records] of Object.entries(projectData)) {
-      for (const [date, minutes] of Object.entries(records)) {
-        const week = getWeekNumber(date);
-        weekData[week] = (weekData[week] || 0) + minutes;
-      }
-    }
-
-    const sortedWeeks = Object.keys(weekData).sort((a, b) => a - b).slice(-4); // last 4 weeks
-    let html = `<h2>Weekly Stats</h2><table><thead><tr><th>Week #</th><th>Total Minutes</th></tr></thead><tbody>`;
-    for (const week of sortedWeeks) {
-      html += `<tr><td>Week ${week}</td><td>${Math.round(weekData[week])}</td></tr>`;
-    }
-    html += '</tbody></table>';
-
-    const box = document.createElement('div');
-    box.className = 'box';
-    box.innerHTML = html;
-    document.body.appendChild(box);
-  }
-
-    // Render all stats
-    renderTopMonthlyProjects();
-    renderWeekdayAverages();
-    renderWeeklyStats();
-      
-    function getTargetForDate(dateStr) {
-  const day = new Date(dateStr).getDay(); // 0=Sun, 1=Mon...
-  if (day >= 1 && day <= 4) return 240;
-  if (day === 5) return 180;
-  return 0; // Sat, Sun
-}
-
-function renderAllTimeAverage() {
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dailyTotals = {};
-
-  // Aggregate minutes per date
-  for (const records of Object.values(projectData)) {
-    for (const [date, minutes] of Object.entries(records)) {
-      dailyTotals[date] = (dailyTotals[date] || 0) + minutes;
-    }
-  }
-
-  const datesSorted = Object.keys(dailyTotals).sort();
-
-  let html = `<h2>📅 All-Time Daily Progress</h2><table><thead>
-    <tr><th>Date</th><th>Day</th><th>Minutes</th><th>Target</th><th>%</th></tr>
-    </thead><tbody>`;
-
-  for (const date of datesSorted) {
-    const minutes = Math.round(dailyTotals[date]);
-    const day = dayNames[new Date(date).getDay()];
-    const target = getTargetForDate(date);
-    const percent = target ? Math.round((minutes / target) * 100) : 0;
-    html += `<tr><td>${date}</td><td>${day}</td><td>${minutes}</td><td>${target}</td><td>${percent}%</td></tr>`;
-  }
-
-  html += '</tbody></table>';
-
-  const box = document.createElement('div');
-  box.className = 'box';
-  box.innerHTML = html;
-  document.body.appendChild(box);
-}
-
-renderAllTimeAverage();
-    // Timer
-    document.getElementById("timerStart").onclick = () => {
-      if (!timerInt) timerInt = setInterval(() => tick('timer'), 1000);
-    };
-    document.getElementById("timerPause").onclick = () => {
-      clearInterval(timerInt); timerInt = null;
-    };
-    document.getElementById("timerReset").onclick = () => {
-      clearInterval(timerInt); timerInt = null; timerSec = 0; updateDisplays();
-    };
-
-
-let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-const archive = JSON.parse(localStorage.getItem("archive") || "[]");
-
-function saveTasks() {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-  localStorage.setItem("archive", JSON.stringify(archive));
-}
-
-function addTask() {
-  const name = document.getElementById("taskInput").value.trim();
-  const status = document.getElementById("taskStatus").value;
-  const project = document.getElementById("taskProject").value;
-  if (!name) return alert("Task name required.");
-  tasks.push({ name, status, project });
-  document.getElementById("taskInput").value = "";
-  renderTasks();
-  saveTasks();
-}
-
-function archiveTask(index) {
-  archive.push(tasks[index]);
-  tasks.splice(index, 1);
-  renderTasks();
-  renderArchive();
-  saveTasks();
-}
-
-function updateTaskStatus(index, newStatus) {
-  tasks[index].status = newStatus;
-  saveTasks();
-}
-
-function updateTaskProject(index, newProject) {
-  tasks[index].project = newProject;
-  saveTasks();
-}
-
-function allowDrop(ev) {
-  ev.preventDefault();
-}
-
-function drag(ev) {
-  ev.dataTransfer.setData("text", ev.target.id);
-}
-
-function drop(ev) {
-  ev.preventDefault();
-  const draggedId = ev.dataTransfer.getData("text");
-  const draggedIndex = parseInt(draggedId.replace("task-", ""));
-  const dropTarget = ev.target.closest(".task-item");
-  if (!dropTarget) return;
-
-  const dropIndex = parseInt(dropTarget.id.replace("task-", ""));
-
-  // Swap
-  const temp = tasks[draggedIndex];
-  tasks.splice(draggedIndex, 1);
-  tasks.splice(dropIndex, 0, temp);
-
-  renderTasks();
-  saveTasks();
-}
-
-function renderProjectDropdown(selectId, selectedValue) {
-  const select = document.getElementById(selectId);
-  select.innerHTML = "";
-  const option = document.createElement("option");
-  option.value = "";
-  option.text = "-- Map to Project --";
-  select.appendChild(option);
-  Object.keys(projectData).forEach((proj) => {
-    const opt = document.createElement("option");
-    opt.value = proj;
-    opt.text = proj;
-    if (proj === selectedValue) opt.selected = true;
-    select.appendChild(opt);
-  });
-}
-
-function renderTasks() {
-  const container = document.getElementById("taskList");
-  container.innerHTML = "";
-
-  tasks.forEach((task, idx) => {
-    const div = document.createElement("div");
-    div.className = "task-item";
-    div.id = `task-${idx}`;
-    div.draggable = true;
-    div.ondragstart = drag;
-    div.style.border = "1px solid #ccc";
-    div.style.borderRadius = "5px";
-    div.style.padding = "8px";
-    div.style.marginTop = "8px";
-    div.style.backgroundColor = "#fdfdfd";
-
-    const projectDropdownId = `proj-${idx}`;
-    div.innerHTML = `
-      <strong>${task.name}</strong><br/>
-      Status: 
-      <select onchange="updateTaskStatus(${idx}, this.value)">
-        <option value="backlog" ${task.status === "backlog" ? "selected" : ""}>Backlog</option>
-        <option value="to_be_picked" ${task.status === "to_be_picked" ? "selected" : ""}>To Be Picked</option>
-        <option value="in_progress" ${task.status === "in_progress" ? "selected" : ""}>In Progress</option>
-        <option value="top_priority" ${task.status === "top_priority" ? "selected" : ""}>Top Priority</option>
-        <option value="completed" ${task.status === "completed" ? "selected" : ""}>Completed</option>
-      </select><br/>
-      Project:
-      <select id="${projectDropdownId}" onchange="updateTaskProject(${idx}, this.value)"></select>
-      <br/>
-      <button onclick="archiveTask(${idx})">Archive</button>
-    `;
-    container.appendChild(div);
-    renderProjectDropdown(projectDropdownId, task.project);
-  });
-
-  // Also re-render the new-task dropdown
-  renderProjectDropdown("taskProject");
-}
-
-function renderArchive() {
-  const container = document.getElementById("archiveList");
-  container.innerHTML = "";
-
-  archive.forEach((task) => {
-    const div = document.createElement("div");
-    div.style.border = "1px dashed #aaa";
-    div.style.padding = "6px";
-    div.style.marginTop = "5px";
-    div.style.backgroundColor = "#f0f0f0";
-    div.innerHTML = `<strong>${task.name}</strong> — ${task.status} (${task.project || "No Project"})`;
-    container.appendChild(div);
-  });
-}
-
-// On page load
-renderTasks();
-renderArchive();
-
-
-
-    let notes = JSON.parse(localStorage.getItem("notes") || "[]");
-
-function saveNotes() {
-  localStorage.setItem("notes", JSON.stringify(notes));
-}
-
-function addNote() {
-  const content = document.getElementById("noteInput").value.trim();
-  const project = document.getElementById("noteProject").value || null;
-  if (!content) return alert("Please write some note before adding.");
-  notes.push({ content, project, date: new Date().toISOString() });
-  document.getElementById("noteInput").value = "";
-  renderNotes();
-  saveNotes();
-}
-
-function renderNoteProjectDropdown() {
-  const select = document.getElementById("noteProject");
-  select.innerHTML = '<option value="">-- Select Project --</option>';
-  Object.keys(projectData).forEach(proj => {
-    const opt = document.createElement("option");
-    opt.value = proj;
-    opt.text = proj;
-    select.appendChild(opt);
-  });
-}
-
-function renderNotes() {
-  const container = document.getElementById("notesList");
-  container.innerHTML = "";
-
-  if(notes.length === 0) {
-    container.innerHTML = "<p>No notes added yet.</p>";
-    return;
-  }
-
-  notes.forEach((note, i) => {
-    const div = document.createElement("div");
-    div.style.border = "1px solid #ccc";
-    div.style.borderRadius = "5px";
-    div.style.padding = "10px";
-    div.style.marginTop = "10px";
-    div.style.backgroundColor = "#fafafa";
-
-    const dateStr = new Date(note.date).toLocaleString();
-
-    div.innerHTML = `
-      <small style="color:#666;">${dateStr}</small><br/>
-      <strong>Project:</strong> ${note.project || "None"}<br/>
-      <pre style="white-space: pre-wrap; margin-top:5px;">${note.content}</pre>
-      <button onclick="deleteNote(${i})" style="margin-top:5px;">Delete</button>
-    `;
-    container.appendChild(div);
-  });
-}
-
-function deleteNote(index) {
-  if (!confirm("Delete this note?")) return;
-  notes.splice(index, 1);
-  renderNotes();
-  saveNotes();
-}
-
-// Call this on page load
-renderNoteProjectDropdown();
-renderNotes();
-
-    // Stopwatch
-    document.getElementById("stopwatchStart").onclick = () => {
-      if (!stopwatchInt) stopwatchInt = setInterval(() => tick('stopwatch'), 1000);
-    };
-    document.getElementById("stopwatchPause").onclick = () => {
-      clearInterval(stopwatchInt); stopwatchInt = null;
-    };
-    document.getElementById("stopwatchReset").onclick = () => {
-      clearInterval(stopwatchInt); stopwatchInt = null; stopwatchSec = 0; updateDisplays();
-    };
-
-    updateDisplays();
-    updateSummary();
+    // Init
+    renderProjects();
   </script>
-<div class="box">
-  <h2>📦 Archived Tasks</h2>
-  <div id="archiveList"></div>
-</div>
-
-<div class="box" style="margin-top: 30px;">
-  <h2>🗒️ Notes</h2>
-  <textarea id="noteInput" rows="4" style="width: 100%;" placeholder="Write your notes here..."></textarea><br/>
-  <label for="noteProject">Assign to project:</label>
-  <select id="noteProject"></select><br/><br/>
-  <button onclick="addNote()">Add Note</button>
-
-  <div id="notesList" style="margin-top: 20px;"></div>
-</div>
-
-  
 </body>
 </html>
