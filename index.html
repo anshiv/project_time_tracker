@@ -72,6 +72,12 @@
 
   <h1>Daily Time Tracker</h1>
 
+  <label for="efficiencySelect">Efficiency: </label>
+<select id="efficiencySelect">
+  <option value="1">1x</option>
+  <option value="0.5">0.5x</option>
+</select>
+
   <div class="container">
         <div class="box" style="max-height: 400px; overflow-y: auto;">
   <h2>📝 Tasks</h2>
@@ -209,16 +215,22 @@
       saveData();
     }
 
-    function tick(type) {
-      if (!currentProject) return;
-      if (!projectData[currentProject][selectedDate]) projectData[currentProject][selectedDate] = 0;
-      if (type === 'timer') timerSec += 1;
-      if (type === 'stopwatch') stopwatchSec += 1;
-      projectData[currentProject][selectedDate] += 1 / 60;
-      updateDisplays();
-      updateSummary();
-      saveData();
-    }
+function tick(type) {
+  if (!currentProject) return;
+  if (!projectData[currentProject][selectedDate]) projectData[currentProject][selectedDate] = 0;
+
+  const efficiency = parseFloat(document.getElementById('efficiencySelect').value) || 1;
+
+  if (type === 'timer') timerSec += 1;
+  if (type === 'stopwatch') stopwatchSec += 1;
+
+  // Add minutes worked, adjusted by efficiency
+  projectData[currentProject][selectedDate] += (1 / 60) * efficiency;
+
+  updateDisplays();
+  updateSummary();
+  saveData();
+}
 
   // --- New Statistics Tables ---
 
