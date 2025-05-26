@@ -73,6 +73,20 @@
   <h1>Daily Time Tracker</h1>
 
   <div class="container">
+        <div class="box" style="max-height: 400px; overflow-y: auto;">
+      <h2>📝 Tasks</h2>
+      <input type="text" id="taskInput" placeholder="Enter task name" />
+      <select id="taskStatus">
+        <option value="backlog">Backlog</option>
+        <option value="to_be_picked">To Be Picked</option>
+        <option value="in_progress">In Progress</option>
+        <option value="top_priority">Top Priority</option>
+        <option value="completed">Completed</option>
+      </select>
+      <button onclick="addTask()">Add Task</button>
+      <div id="taskList"></div>
+    </div>
+
     <div class="box">
       <h2>Timer</h2>
       <div id="timerDisplay">00:00:00</div>
@@ -357,6 +371,86 @@ renderAllTimeAverage();
       clearInterval(timerInt); timerInt = null; timerSec = 0; updateDisplays();
     };
 
+
+    const tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+const archive = JSON.parse(localStorage.getItem("archive") || "[]");
+
+function saveTasks() {
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  localStorage.setItem("archive", JSON.stringify(archive));
+}
+
+function addTask() {
+  const name = document.getElementById("taskInput").value.trim();
+  const status = document.getElementById("taskStatus").value;
+  if (!name) return alert("Task name required.");
+  tasks.push({ name, status });
+  document.getElementById("taskInput").value = "";
+  renderTasks();
+  saveTasks();
+}
+
+function archiveTask(index) {
+  archive.push(tasks[index]);
+  tasks.splice(index, 1);
+  renderTasks();
+  renderArchive();
+  saveTasks();
+}
+
+function renderTasks() {
+  const container = document.getElementById("taskList");
+  container.innerHTML = "";
+
+  tasks.forEach((task, idx) => {
+    const div = document.createElement("div");
+    div.style.border = "1px solid #ccc";
+    div.style.borderRadius = "5px";
+    div.style.padding = "8px";
+    div.style.marginTop = "8px";
+    div.style.backgroundColor = "#fdfdfd";
+
+    div.innerHTML = `
+      <strong>${task.name}</strong><br/>
+      Status: 
+      <select onchange="updateTaskStatus(${idx}, this.value)">
+        <option value="backlog" ${task.status === "backlog" ? "selected" : ""}>Backlog</option>
+        <option value="to_be_picked" ${task.status === "to_be_picked" ? "selected" : ""}>To Be Picked</option>
+        <option value="in_progress" ${task.status === "in_progress" ? "selected" : ""}>In Progress</option>
+        <option value="top_priority" ${task.status === "top_priority" ? "selected" : ""}>Top Priority</option>
+        <option value="completed" ${task.status === "completed" ? "selected" : ""}>Completed</option>
+      </select><br/>
+      <button onclick="archiveTask(${idx})">Archive</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateTaskStatus(index, newStatus) {
+  tasks[index].status = newStatus;
+  saveTasks();
+}
+
+function renderArchive() {
+  const container = document.getElementById("archiveList");
+  container.innerHTML = "";
+
+  archive.forEach((task) => {
+    const div = document.createElement("div");
+    div.style.border = "1px dashed #aaa";
+    div.style.padding = "6px";
+    div.style.marginTop = "5px";
+    div.style.backgroundColor = "#f0f0f0";
+    div.innerHTML = `<strong>${task.name}</strong> — ${task.status}`;
+    container.appendChild(div);
+  });
+}
+
+// Load on page start
+renderTasks();
+renderArchive();
+
+
     // Stopwatch
     document.getElementById("stopwatchStart").onclick = () => {
       if (!stopwatchInt) stopwatchInt = setInterval(() => tick('stopwatch'), 1000);
@@ -371,6 +465,10 @@ renderAllTimeAverage();
     updateDisplays();
     updateSummary();
   </script>
+<div class="box">
+  <h2>📦 Archived Tasks</h2>
+  <div id="archiveList"></div>
+</div>
 
 </body>
 </html>
